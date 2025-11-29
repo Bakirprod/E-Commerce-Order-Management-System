@@ -1,0 +1,198 @@
+services:
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:management  # Use this instead
+    container_name: rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management UI
+    environment:
+      - RABBITMQ_DEFAULT_USER=admin
+      - RABBITMQ_DEFAULT_PASS=password
+    networks:
+      - ecommerce-network
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "check_running"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Order Service (UPDATED depends_on)
+  order-service:
+    build: 
+      context: "../order service"
+      dockerfile: Dockerfile
+    ports:
+      - "8081:8081"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      order-db:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  # Order Database
+  order-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=order_db
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - "3307:3306"
+    volumes:
+      - order_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+
+  # Inventory Service (ADD rabbitmq dependency)
+  inventory-service:
+    build:
+      context: "../inventory service"
+      dockerfile: Dockerfile
+    ports:
+      - "8082:8082"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      inventory-db:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  # Inventory Database
+  inventory-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=inventory_db
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - "3308:3306"
+    volumes:
+      - inventory_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+
+  # Customer Service (ADD rabbitmq dependency)
+  customer-service:
+    build:
+      context: "../customer service"
+      dockerfile: Dockerfile
+    ports:
+      - "8083:8083"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      customer-db:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  # Customer Database
+  customer-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=customer_db
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - "3309:3306"
+    volumes:
+      - customer_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+
+  # Payment Service (UPDATED depends_on)
+  payment-service:
+    build:
+      context: "../payment service"
+      dockerfile: Dockerfile
+    ports:
+      - "8084:8084"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      payment-db:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  # Payment Database
+  payment-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=payment_db
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - "3310:3306"
+    volumes:
+      - payment_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+
+  # Shipping Service (UPDATED depends_on)
+  shipping-service:
+    build:
+      context: "../shipping service"
+      dockerfile: Dockerfile
+    ports:
+      - "8085:8085"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      shipping-db:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  # Shipping Database
+  shipping-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=shipping_db
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - "3311:3306"
+    volumes:
+      - shipping_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+
+  # Notification Service (UPDATED depends_on)
+  notification-service:
+    build:
+      context: "../notification service"
+      dockerfile: Dockerfile
+    ports:
+      - "8086:8086"
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      notification-db:
+        condition: service_started
+    networks:
+      - ecommerce-network
+
+  # Notification Database
+  notification-db:
+    image: mysql:8.0
+    environment:
+      - MYSQL_DATABASE=notification_db
+      - MYSQL_ROOT_PASSWORD=password
+    ports:
+      - "3312:3306"
+    volumes:
+      - notification_db_data:/var/lib/mysql
+    networks:
+      - ecommerce-network
+
+volumes:
+  order_db_data:
+  inventory_db_data:
+  customer_db_data:
+  payment_db_data:
+  shipping_db_data:
+  notification_db_data:
+
+networks:
+  ecommerce-network:
+    driver: bridge
